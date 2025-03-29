@@ -95,20 +95,19 @@ if (whiptail --backtitle "n8n-pi Installer" --title "Continue with install?" --y
     $SUDO chmod 755 /home/n8n/build-n8n-pi-2.sh &>>$logfile || error_exit "$LINENO: Unable to set permissions for build-n8n-pi-2.sh"
     $SUDO chown n8n:n8n /home/n8n/build-n8n-pi-2.sh &>>$logfile || error_exit "$LINENO: Unable to set ownership for build-n8n-pi-2.sh to n8n user"
 
-    # Backup .bashrc only if it exists
-    if [ -f /home/n8n/.bashrc ]; then
-        $SUDO cp /home/n8n/.bashrc /home/n8n/.bashrc-org &>>$logfile || error_exit "$LINENO: Unable to backup /home/n8n/.bashrc"
-        $SUDO chown n8n:n8n /home/n8n/.bashrc-org &>>$logfile || error_exit "$LINENO: Unable to set ownership for /home/n8n/.bashrc-org"
-    else
-        echo "/home/n8n/.bashrc not found, skipping backup." >>$logfile
+    # Ensure /home/n8n/.bashrc exists. If not, create it.
+    if [ ! -f /home/n8n/.bashrc ]; then
+        echo "/home/n8n/.bashrc not found. Creating a new .bashrc file." >>$logfile
+        $SUDO touch /home/n8n/.bashrc || error_exit "$LINENO: Unable to create /home/n8n/.bashrc"
+        $SUDO chown n8n:n8n /home/n8n/.bashrc || error_exit "$LINENO: Unable to set ownership for /home/n8n/.bashrc"
     fi
 
-    # Append autorun entry if .bashrc exists
-    if [ -f /home/n8n/.bashrc ]; then
-        echo '~/build-n8n-pi-2.sh' | $SUDO tee --append /home/n8n/.bashrc &>>$logfile || error_exit "$LINENO: Unable to update /home/n8n/.bashrc to autorun build-n8n-pi-2.sh"
-    else
-        error_exit "$LINENO: /home/n8n/.bashrc not found. Cannot append autorun entry."
-    fi
+    # Backup .bashrc
+    $SUDO cp /home/n8n/.bashrc /home/n8n/.bashrc-org &>>$logfile || error_exit "$LINENO: Unable to backup /home/n8n/.bashrc"
+    $SUDO chown n8n:n8n /home/n8n/.bashrc-org &>>$logfile || error_exit "$LINENO: Unable to set ownership for /home/n8n/.bashrc-org"
+
+    # Append autorun entry
+    echo '~/build-n8n-pi-2.sh' | $SUDO tee --append /home/n8n/.bashrc &>>$logfile || error_exit "$LINENO: Unable to update /home/n8n/.bashrc to autorun build-n8n-pi-2.sh"
     echo "done!"
 
     # Final message and instructions
