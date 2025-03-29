@@ -27,7 +27,7 @@ log_heading() {
     echo -n "$1..."
 }
 
-# Runs commands with "sudo" if the user running the script is not root
+# Use sudo if not root
 SUDO=''
 if [[ $EUID -ne 0 ]]; then
     SUDO='sudo'
@@ -39,20 +39,20 @@ clear
 message=$'This script is designed to build a new n8n-pi from a base Raspbian Lite installation.\n\nThis is the first of two scripts that need to be run.\n\nIt will perform the following actions:\n    1. Update Raspian Lite to the latest software\n    2. Install dependencies\n    3. Rename the server\n    4. Add the n8n user\n    5. Install base custom MOTD\n    6. Update hostname\n    7. Reboot'
 whiptail --backtitle "n8n-pi Installer" --title "Welcome to the n8n-pi Installer" --msgbox "$message" 17 78
 
-# Asks user for permission to continue
+# Ask for permission to continue
 if (whiptail --backtitle "n8n-pi Installer" --title "Continue with install?" --yesno "Do you wish to continue with the installation?" 8 78); then
 
-    # Updates list of packages
+    # Update package list
     log_heading "Updating package list"
     $SUDO apt update &>>$logfile || error_exit "$LINENO: Unable to update apt sources"
     echo "done!"
 
-    # Upgrades packages
+    # Upgrade packages
     log_heading "Upgrading packages (Please be patient, this may take a while)"
     $SUDO apt upgrade -y &>>$logfile || error_exit "$LINENO: Unable to upgrade packages"
     echo "done!"
 
-    # Installs figlet, jq, and build-essential
+    # Install dependencies
     log_heading "Installing dependencies"
     $SUDO apt install figlet jq build-essential -y &>>$logfile || error_exit "$LINENO: Unable to install dependencies"
     echo "done!"
@@ -64,19 +64,19 @@ if (whiptail --backtitle "n8n-pi Installer" --title "Continue with install?" --y
     else
         $SUDO adduser --disabled-password --gecos "" n8n &>>$logfile || error_exit "$LINENO: Unable to create n8n user"
     fi
-    # Add n8n to the sudo group (harmless if already added)
+    # Add n8n to sudo group
     $SUDO usermod -a -G sudo n8n &>>$logfile || error_exit "$LINENO: Unable to add n8n user to sudo group"
     echo 'n8n:n8n=gr8!' | $SUDO chpasswd &>>$logfile || error_exit "$LINENO: Unable to set n8n password"
     $SUDO cp /etc/sudoers /etc/sudoers.org &>>$logfile || error_exit "$LINENO: Unable to create backup of /etc/sudoers"
     echo 'n8n   ALL=(ALL) NOPASSWD:ALL' | $SUDO EDITOR='tee -a' visudo &>>$logfile || error_exit "$LINENO: Unable to remove n8n sudo password requirement"
     echo "done!"
 
-    # Install first MOTD
+    # Update MOTD (Message of the Day)
     log_heading "Updating MOTD (1 of 2)"
     $SUDO wget --no-cache -O /etc/update-motd.d/10-sysinfo https://raw.githubusercontent.com/TephlonDude/n8n-pi/master/motd/10-sysinfo &>>$logfile || error_exit "$LINENO: Unable to retrieve 10-sysinfo file"
     $SUDO chmod 755 /etc/update-motd.d/10-sysinfo &>>$logfile || error_exit "$LINENO: Unable to set 10-sysinfo permissions"
     $SUDO rm -f /etc/update-motd.d/10-uname &>>$logfile || error_exit "$LINENO: Unable to remove /etc/update-motd.d/10-uname"
-    $SUDO truncate -s 0 /etc/motd &>>$logfile || error_exit "$LINENO: Unable to delete the contents of /etc/motd"
+    $SUDO truncate -s 0 /etc/motd &>>$logfile || error_exit "$LINENO: Unable to clear /etc/motd"
     $SUDO rm -f /etc/profile.d/sshpwd.sh &>>$logfile || error_exit "$LINENO: Unable to remove /etc/profile.d/sshpwd.sh"
     $SUDO rm -f /etc/profile.d/wifi-check.sh &>>$logfile || error_exit "$LINENO: Unable to remove /etc/profile.d/wifi-check.sh"
     $SUDO sed -i 's/#PrintLastLog yes/PrintLastLog no/g' /etc/ssh/sshd_config &>>$logfile || error_exit "$LINENO: Unable to disable last login message in /etc/ssh/sshd_config"
@@ -89,22 +89,30 @@ if (whiptail --backtitle "n8n-pi Installer" --title "Continue with install?" --y
     $SUDO sed -i "s/raspberrypi/$newhostname/g" /etc/hosts &>>$logfile || error_exit "$LINENO: Unable to update /etc/hosts with new hostname"
     echo "done!"
 
-    # Prepare for reboot
+    # Prepare for reboot: download build-n8n-pi-2.sh
     log_heading "Preparing for reboot"
     $SUDO wget --no-cache -O /home/n8n/build-n8n-pi-2.sh https://raw.githubusercontent.com/TephlonDude/n8n-pi/master/scripts/build-n8n-pi-2.sh &>>$logfile || error_exit "$LINENO: Unable to retrieve build-n8n-pi-2.sh"
     $SUDO chmod 755 /home/n8n/build-n8n-pi-2.sh &>>$logfile || error_exit "$LINENO: Unable to set permissions for build-n8n-pi-2.sh"
-    $SUDO chown n8n:n8n /home/n8n/build-n8n-pi-2.sh &>>$logfile || error_exit "$LINENO: Unable to set ownership for build-n8n-pi-2.sh to n8n user"
+    $SUDO chown n8n:n8n /home/n8n/build-n8n-pi-2.sh &>>$logfile || error_exit "$LINENO: Unable to set ownership for build-n8n-pi-2.sh"
 
-    # Ensure /home/n8n/.bashrc exists. If not, create it.
+    # Ensure /home/n8n/.bashrc exists; create it if it doesn't.
     if [ ! -f /home/n8n/.bashrc ]; then
         echo "/home/n8n/.bashrc not found. Creating a new .bashrc file." >>$logfile
-        $SUDO touch /home/n8n/.bashrc || error_exit "$LINENO: Unable to create /home/n8n/.bashrc"
-        $SUDO chown n8n:n8n /home/n8n/.bashrc || error_exit "$LINENO: Unable to set ownership for /home/n8n/.bashrc"
+        if [ -z "$SUDO" ]; then
+            touch /home/n8n/.bashrc || error_exit "$LINENO: Unable to create /home/n8n/.bashrc"
+            chown n8n:n8n /home/n8n/.bashrc || error_exit "$LINENO: Unable to set ownership for /home/n8n/.bashrc"
+        else
+            $SUDO -u n8n touch /home/n8n/.bashrc || error_exit "$LINENO: Unable to create /home/n8n/.bashrc"
+        fi
     fi
 
-    # Backup .bashrc
-    $SUDO cp /home/n8n/.bashrc /home/n8n/.bashrc-org &>>$logfile || error_exit "$LINENO: Unable to backup /home/n8n/.bashrc"
-    $SUDO chown n8n:n8n /home/n8n/.bashrc-org &>>$logfile || error_exit "$LINENO: Unable to set ownership for /home/n8n/.bashrc-org"
+    # Backup .bashrc (if exists, even if it was just created, it will be empty)
+    if [ -f /home/n8n/.bashrc ]; then
+        $SUDO cp /home/n8n/.bashrc /home/n8n/.bashrc-org &>>$logfile || error_exit "$LINENO: Unable to backup /home/n8n/.bashrc"
+        $SUDO chown n8n:n8n /home/n8n/.bashrc-org &>>$logfile || error_exit "$LINENO: Unable to set ownership for /home/n8n/.bashrc-org"
+    else
+        error_exit "$LINENO: /home/n8n/.bashrc not found after creation."
+    fi
 
     # Append autorun entry
     echo '~/build-n8n-pi-2.sh' | $SUDO tee --append /home/n8n/.bashrc &>>$logfile || error_exit "$LINENO: Unable to update /home/n8n/.bashrc to autorun build-n8n-pi-2.sh"
