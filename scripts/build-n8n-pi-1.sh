@@ -11,7 +11,7 @@ error_exit() {
     echo "Full log details are recorded in $logfile"
     echo
     echo "You can rerun this script by using the command:"
-    echo "wget --no-cache -O - https://raw.githubusercontent.com/TephlonDude/n8n-pi/master/scripts/build-n8n-pi-1.sh | bash"
+    echo "wget --no-cache -O - https://raw.githubusercontent.com/neo-seeker/n8n-pi/master/scripts/build-n8n-pi-1.sh | bash"
     exit 1
 }
 
@@ -73,7 +73,7 @@ if (whiptail --backtitle "n8n-pi Installer" --title "Continue with install?" --y
 
     # Update MOTD (Message of the Day)
     log_heading "Updating MOTD (1 of 2)"
-    $SUDO wget --no-cache -O /etc/update-motd.d/10-sysinfo https://raw.githubusercontent.com/TephlonDude/n8n-pi/master/motd/10-sysinfo &>>$logfile || error_exit "$LINENO: Unable to retrieve 10-sysinfo file"
+    $SUDO wget --no-cache -O /etc/update-motd.d/10-sysinfo https://raw.githubusercontent.com/neo-seeker/n8n-pi/master/motd/10-sysinfo &>>$logfile || error_exit "$LINENO: Unable to retrieve 10-sysinfo file"
     $SUDO chmod 755 /etc/update-motd.d/10-sysinfo &>>$logfile || error_exit "$LINENO: Unable to set 10-sysinfo permissions"
     $SUDO rm -f /etc/update-motd.d/10-uname &>>$logfile || error_exit "$LINENO: Unable to remove /etc/update-motd.d/10-uname"
     $SUDO truncate -s 0 /etc/motd &>>$logfile || error_exit "$LINENO: Unable to clear /etc/motd"
@@ -91,7 +91,7 @@ if (whiptail --backtitle "n8n-pi Installer" --title "Continue with install?" --y
 
     # Prepare for reboot: download build-n8n-pi-2.sh
     log_heading "Preparing for reboot"
-    $SUDO wget --no-cache -O /home/n8n/build-n8n-pi-2.sh https://raw.githubusercontent.com/TephlonDude/n8n-pi/master/scripts/build-n8n-pi-2.sh &>>$logfile || error_exit "$LINENO: Unable to retrieve build-n8n-pi-2.sh"
+    $SUDO wget --no-cache -O /home/n8n/build-n8n-pi-2.sh https://raw.githubusercontent.com/neo-seeker/n8n-pi/master/scripts/build-n8n-pi-2.sh &>>$logfile || error_exit "$LINENO: Unable to retrieve build-n8n-pi-2.sh"
     $SUDO chmod 755 /home/n8n/build-n8n-pi-2.sh &>>$logfile || error_exit "$LINENO: Unable to set permissions for build-n8n-pi-2.sh"
     $SUDO chown n8n:n8n /home/n8n/build-n8n-pi-2.sh &>>$logfile || error_exit "$LINENO: Unable to set ownership for build-n8n-pi-2.sh"
 
